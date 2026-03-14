@@ -64,7 +64,7 @@ namespace IronRuby.Builtins {
         
         #endregion
 
-        #region extend_object, extended, include, included
+        #region extend_object, extended, include, included, prepend, prepended
 
         // thread-safe:
         [RubyMethod("extend_object", RubyMethodAttributes.PrivateInstance)]
@@ -109,6 +109,39 @@ namespace IronRuby.Builtins {
         [RubyMethod("append_features", RubyMethodAttributes.PrivateInstance)]
         public static RubyModule/*!*/ AppendFeatures(RubyModule/*!*/ self, [NotNull]RubyModule/*!*/ owner) {
             owner.IncludeModules(self);
+            return self;
+        }
+
+        [RubyMethod("prepend", RubyMethodAttributes.PrivateInstance)]
+        public static RubyModule/*!*/ Prepend(
+            CallSiteStorage<Func<CallSite, RubyModule, RubyModule, object>>/*!*/ prependFeaturesStorage,
+            CallSiteStorage<Func<CallSite, RubyModule, RubyModule, object>>/*!*/ prependedStorage,
+            RubyModule/*!*/ self, [NotNullItems]params RubyModule/*!*/[]/*!*/ modules) {
+
+            RubyUtils.RequireMixins(self, modules);
+
+            var prependFeatures = prependFeaturesStorage.GetCallSite("prepend_features", 1);
+            var prepended = prependedStorage.GetCallSite("prepended", 1);
+
+            // prepend_features inserts the module before the receiver in ancestors list;
+            // ancestors after prepend: [modules[0], modules[1], ..., modules[N-1], self, ...]
+            for (int i = modules.Length - 1; i >= 0; i--) {
+                prependFeatures.Target(prependFeatures, modules[i], self);
+                prepended.Target(prepended, modules[i], self);
+            }
+
+            return self;
+        }
+
+        [RubyMethod("prepended", RubyMethodAttributes.PrivateInstance)]
+        public static void Prepended(RubyModule/*!*/ self, RubyModule/*!*/ owner) {
+            // self has been prepended to owner
+        }
+
+        // thread-safe:
+        [RubyMethod("prepend_features", RubyMethodAttributes.PrivateInstance)]
+        public static RubyModule/*!*/ PrependFeatures(RubyModule/*!*/ self, [NotNull]RubyModule/*!*/ owner) {
+            owner.PrependModules(self);
             return self;
         }
 
@@ -1027,7 +1060,7 @@ namespace IronRuby.Builtins {
                 return self.Context.GetModule(arrayType);
             }
 
-            if (!type.IsGenericTypeDefinition()) {
+            if (!type.IsGenericTypeDefinition) {
                 if (provided > 0) {
                     throw RubyExceptions.CreateArgumentError("`{0}' is not a generic type definition", self.Name);
                 }
@@ -1052,7 +1085,7 @@ namespace IronRuby.Builtins {
 
             Type type = self.TypeTracker.Type;
 
-            if (!type.IsGenericTypeDefinition()) {
+            if (!type.IsGenericTypeDefinition) {
                 if (genericArity > 0) {
                     throw RubyExceptions.CreateArgumentError("`{0}' is not a generic type definition", self.Name);
                 }

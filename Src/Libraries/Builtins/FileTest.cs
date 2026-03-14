@@ -12,21 +12,22 @@
  *
  *
  * ***************************************************************************/
-#if FEATURE_FILESYSTEM
 
-#if CLR2
-using Microsoft.Scripting.Utils;
-#endif
-
-using System;
 using System.IO;
 using IronRuby.Runtime;
 using Microsoft.Scripting.Runtime;
 
+#if CLR2
+using Microsoft.Scripting.Utils;
+using System;
+#else
+using System;
+#endif
+
 namespace IronRuby.Builtins {
     // TODO: conversion: to_io, to_path, to_str
 
-    [RubyModule("FileTest", BuildConfig = "FEATURE_FILESYSTEM")]
+    [RubyModule("FileTest")]
     public static class FileTest {
         [RubyMethod("blockdev?", RubyMethodAttributes.PublicSingleton)]
         [RubyMethod("blockdev?", RubyMethodAttributes.PrivateInstance)]
@@ -43,7 +44,7 @@ namespace IronRuby.Builtins {
         [RubyMethod("directory?", RubyMethodAttributes.PublicSingleton)]
         [RubyMethod("directory?", RubyMethodAttributes.PrivateInstance)]
         public static bool IsDirectory(ConversionStorage<MutableString>/*!*/ toPath, RubyModule/*!*/ self, object path) {
-            return RubyFileOps.DirectoryExists(self.Context, Protocols.CastToPath(toPath, path));
+            return DirectoryExists(self.Context, Protocols.CastToPath(toPath, path));
         }
 
         [RubyMethod("executable?", RubyMethodAttributes.PublicSingleton)]
@@ -60,13 +61,13 @@ namespace IronRuby.Builtins {
         [RubyMethod("exists?", RubyMethodAttributes.PrivateInstance)]
         public static bool Exists(ConversionStorage<MutableString>/*!*/ toPath, RubyModule/*!*/ self, object path) {
             var p = Protocols.CastToPath(toPath, path);
-            return RubyFileOps.FileExists(self.Context, p) || RubyFileOps.DirectoryExists(self.Context, p);
+            return FileExists(self.Context, p) || DirectoryExists(self.Context, p);
         }
 
         [RubyMethod("file?", RubyMethodAttributes.PublicSingleton)]
         [RubyMethod("file?", RubyMethodAttributes.PrivateInstance)]
         public static bool IsFile(ConversionStorage<MutableString>/*!*/ toPath, RubyModule/*!*/ self, object path) {
-            return RubyFileOps.FileExists(self.Context, Protocols.CastToPath(toPath, path));
+            return FileExists(self.Context, Protocols.CastToPath(toPath, path));
         }
 
         [RubyMethod("grpowned?", RubyMethodAttributes.PublicSingleton)]
@@ -147,11 +148,13 @@ namespace IronRuby.Builtins {
             return RubyFileOps.RubyStatOps.IsSticky(RubyFileOps.RubyStatOps.Create(self.Context, Protocols.CastToPath(toPath, path)));
         }
 
-        [RubyMethod("symlink?", RubyMethodAttributes.PublicSingleton)]
-        [RubyMethod("symlink?", RubyMethodAttributes.PrivateInstance)]
+#if !SILVERLIGHT
+        [RubyMethod("symlink?", RubyMethodAttributes.PublicSingleton, BuildConfig = "!SILVERLIGHT")]
+        [RubyMethod("symlink?", RubyMethodAttributes.PrivateInstance, BuildConfig = "!SILVERLIGHT")]
         public static bool IsSymLink(ConversionStorage<MutableString>/*!*/ toPath, RubyModule/*!*/ self, object path) {
             return RubyFileOps.RubyStatOps.IsSymLink(RubyFileOps.RubyStatOps.Create(self.Context, Protocols.CastToPath(toPath, path)));
         }
+#endif
 
         [RubyMethod("writable?", RubyMethodAttributes.PublicSingleton)]
         [RubyMethod("writable?", RubyMethodAttributes.PrivateInstance)]
@@ -179,6 +182,19 @@ namespace IronRuby.Builtins {
             return RubyFileOps.RubyStatOps.IsZeroLength(RubyFileOps.RubyStatOps.Create(self.Context, strPath));
         }
 
+        internal static bool FileExists(RubyContext/*!*/ context, MutableString/*!*/ path) {
+            return context.Platform.FileExists(context.DecodePath(path));
+        }
+
+        internal static bool DirectoryExists(RubyContext/*!*/ context, MutableString/*!*/ path) {
+            return context.Platform.DirectoryExists(context.DecodePath(path));
+        }
+
+        internal static bool Exists(RubyContext/*!*/ context, MutableString/*!*/ path) {
+            var strPath = context.DecodePath(path);
+            return context.Platform.DirectoryExists(strPath) || context.Platform.FileExists(strPath);
+        }
+
         private static bool RunIfFileExists(RubyContext/*!*/ context, MutableString/*!*/ path, Func<FileSystemInfo, bool> del) {
             return RunIfFileExists(context, path.ConvertToString(), del);
         }
@@ -193,4 +209,3 @@ namespace IronRuby.Builtins {
         }
     }
 }
-#endif

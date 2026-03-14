@@ -12,13 +12,13 @@
  *
  *
  * ***************************************************************************/
-#if FEATURE_THREAD
+
 using System.Threading;
 using Microsoft.Scripting.Runtime;
 using IronRuby.Runtime;
 
 namespace IronRuby.Builtins {
-    [RubyClass("ThreadGroup", Inherits = typeof(object), BuildConfig = "FEATURE_THREAD")]
+    [RubyClass("ThreadGroup", Inherits = typeof(object))]
     public class ThreadGroup {
         [RubyMethod("add")]
         public static ThreadGroup/*!*/ Add([NotNull]ThreadGroup/*!*/ self, [NotNull]Thread/*!*/ thread) {
@@ -47,4 +47,3 @@ namespace IronRuby.Builtins {
         public readonly static ThreadGroup Default = new ThreadGroup();
     }
 }
-#endif

@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if FEATURE_SYNC_SOCKETS
+#if !SILVERLIGHT
 
 using System.Net.Sockets;
 using Microsoft.Scripting.Runtime;
@@ -23,7 +23,7 @@ using System.Runtime.InteropServices;
 using System.Net;
 
 namespace IronRuby.StandardLibrary.Sockets {
-    [RubyClass("TCPSocket", BuildConfig = "FEATURE_SYNC_SOCKETS")]
+    [RubyClass("TCPSocket", BuildConfig = "!SILVERLIGHT")]
     public class TCPSocket : IPSocket {
         /// <summary>
         /// Creates an uninitialized socket.

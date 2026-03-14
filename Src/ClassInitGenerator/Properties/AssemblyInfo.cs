@@ -30,5 +30,5 @@ using IronRuby.Runtime;
 //      Build Number
 //      Revision
 //
-//[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
-//[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]
+[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
+[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]

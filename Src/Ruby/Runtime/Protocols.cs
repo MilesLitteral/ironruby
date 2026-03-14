@@ -376,7 +376,7 @@ namespace IronRuby.Runtime {
                 return hashResult.GetHashCode();
             }
 
-            return hashResult == null ? RubyUtils.NilObjectId : ReferenceEqualityComparer<object>.Instance.GetHashCode(hashResult);
+            return hashResult == null ? RubyUtils.NilObjectId : RuntimeHelpers.GetHashCode(hashResult);
         }
 
         #endregion

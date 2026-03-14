@@ -12,7 +12,6 @@
  *
  *
  * ***************************************************************************/
-#if FEATURE_CRYPTOGRAPHY
 
 using System;
 using System.Globalization;
@@ -29,7 +28,7 @@ using Crypto = System.Security.Cryptography;
 
 namespace IronRuby.StandardLibrary.OpenSsl {
 
-    [RubyModule("OpenSSL", BuildConfig = "FEATURE_CRYPTOGRAPHY")]
+    [RubyModule("OpenSSL")]
     public static class OpenSsl {
         // TODO: constants
         // Config,HMACError,PKCS12,Random,OPENSSL_VERSION,PKCS7,BN,ConfigError,PKey,Engine,BNError,Netscape,OCSP
@@ -254,15 +253,6 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             public class Certificate {
                 private X509Certificate/*!*/ _certificate;
 
-                private bool IsEmpty {
-#if SILVERLIGHT
-                    // TODO: ?
-                    get { return false; }
-#else
-                    get { return _certificate.Handle == IntPtr.Zero; }
-#endif
-                }
-
                 [RubyConstructor]
                 public static Certificate/*!*/ CreateCertificate(RubyClass/*!*/ self) {
                     return Initialize(new Certificate(), null);
@@ -305,7 +295,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
 
                 [RubyMethod("issuer")]
                 public static MutableString Issuer(Certificate/*!*/ self) {
-                    if (self.IsEmpty) {
+                    if (self._certificate.Handle == IntPtr.Zero) {
                         return null;
                     } else {
                         return MutableString.CreateAscii(OpenSSLFormat(self._certificate.Issuer));
@@ -319,7 +309,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
 
                 [RubyMethod("public_key")]
                 public static MutableString PublicKey(Certificate/*!*/ self) {
-                    if (self.IsEmpty) {
+                    if (self._certificate.Handle == IntPtr.Zero) {
                         // TODO: Raise OpenSSL::X509::CertificateError
                         return MutableString.CreateEmpty();
                     } else {
@@ -330,7 +320,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
 
                 private int SerailNumber {
                     get {
-                        if (IsEmpty) {
+                        if (_certificate.Handle == IntPtr.Zero) {
                             return 0;
                         } else {
                             return int.Parse(_certificate.GetSerialNumberString(), CultureInfo.InvariantCulture);
@@ -349,7 +339,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
 
                 [RubyMethod("subject")]
                 public static MutableString Subject(Certificate/*!*/ self) {
-                    if (self.IsEmpty) {
+                    if (self._certificate.Handle == IntPtr.Zero) {
                         return null;
                     } else {
                         return MutableString.CreateAscii(OpenSSLFormat(self._certificate.Subject));
@@ -372,7 +362,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
                         if (handle == null) {
                             return result.Append(":...>");
                         }
-                        bool empty = self.IsEmpty;
+                        bool empty = self._certificate.Handle == IntPtr.Zero;
                         result.AppendFormat(" subject={0}, issuer={1}, serial={2}, not_before=nil, not_after=nil>", 
                             empty ? "" : OpenSSLFormat(self._certificate.Subject),
                             empty ? "" : OpenSSLFormat(self._certificate.Issuer),
@@ -387,7 +377,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
 
                 [RubyMethod("version")]
                 public static int Version(Certificate/*!*/ self) {
-                    if (self.IsEmpty) {
+                    if (self._certificate.Handle == IntPtr.Zero) {
                         return 0;
                     } else {
                         return 2;
@@ -450,7 +440,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             public OpenSSLError(string message, Exception inner) : base(RubyExceptions.MakeMessage(message, M), inner) { }
             public OpenSSLError(MutableString message) : base(RubyExceptions.MakeMessage(ref message, M)) { RubyExceptionData.InitializeException(this, message); }
 
-#if FEATURE_SERIALIZATION
+#if !SILVERLIGHT
             protected OpenSSLError(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
                 : base(info, context) { }
 #endif
@@ -467,7 +457,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
                 public SSLError(string message, Exception inner) : base(RubyExceptions.MakeMessage(message, M), inner) { }
                 public SSLError(MutableString message) : base(RubyExceptions.MakeMessage(ref message, M)) { RubyExceptionData.InitializeException(this, message); }
 
-#if FEATURE_SERIALIZATION
+#if !SILVERLIGHT
                 protected SSLError(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
                     : base(info, context) { }
 #endif
@@ -475,4 +465,3 @@ namespace IronRuby.StandardLibrary.OpenSsl {
         }
     }
 }
-#endif

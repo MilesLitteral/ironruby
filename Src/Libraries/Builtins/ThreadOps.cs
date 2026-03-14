@@ -12,7 +12,7 @@
  *
  *
  * ***************************************************************************/
-#if FEATURE_THREAD
+
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -36,7 +36,7 @@ namespace IronRuby.Builtins {
     /// For such methods, we use Thread.Abort which is unsafe. Howevever, Ruby 1.9 may not support green threads,
     /// and this will not be an issue then.
     /// </summary>
-    [RubyClass("Thread", Extends = typeof(Thread), Inherits = typeof(object), BuildConfig = "FEATURE_THREAD")]
+    [RubyClass("Thread", Extends = typeof(Thread), Inherits = typeof(object))]
     public static class ThreadOps {
         static bool _globalAbortOnException;
 
@@ -391,7 +391,7 @@ namespace IronRuby.Builtins {
             return info.GetKeys();
         }
 
-#if !SILVERLIGHT && !WP75
+#if !SILVERLIGHT
         #region priority, priority=
         [RubyMethod("priority", BuildConfig = "!SILVERLIGHT")]
         public static object Priority(Thread/*!*/ self) {
@@ -432,7 +432,7 @@ namespace IronRuby.Builtins {
 #endif
         #region raise, fail
 
-#if FEATURE_EXCEPTION_STATE
+#if !SILVERLIGHT
         private static void RaiseAsyncException(Thread thread, Exception exception) {
             RubyThreadStatus status = GetStatus(thread);
 
@@ -459,13 +459,13 @@ namespace IronRuby.Builtins {
                 return;
             }
 
-#if FEATURE_EXCEPTION_STATE
+#if SILVERLIGHT
+            throw new NotImplementedError("Thread#raise is not implemented on Silverlight");
+#else
             // TODO: RubyContext.CurrentException is a thread-local static, and cannot be accessed from other threads
             // To fix this, it would have to be stored somehow without using ThreadStaticAttribute
             // For now, we just throw a RuntimeError
             RaiseAsyncException(self, new RuntimeError());
-#else
-            throw new NotImplementedError("Thread#raise not supported on this platform");
 #endif
         }
 
@@ -477,11 +477,11 @@ namespace IronRuby.Builtins {
                 return;
             }
 
-#if FEATURE_EXCEPTION_STATE
+#if SILVERLIGHT
+            throw new NotImplementedError("Thread#raise is not implemented on Silverlight");
+#else
             Exception e = RubyExceptionData.InitializeException(new RuntimeError(message.ToString()), message);
             RaiseAsyncException(self, e);
-#else
-            throw new NotImplementedError("Thread#raise not supported on this platform");
 #endif
         }
 
@@ -496,11 +496,11 @@ namespace IronRuby.Builtins {
                 return;
             }
 
-#if FEATURE_EXCEPTION_STATE
+#if SILVERLIGHT
+            throw new NotImplementedError("Thread#raise is not implemented on Silverlight");
+#else
             Exception e = KernelOps.CreateExceptionToRaise(respondToStorage, storage0, storage1, setBackTraceStorage, obj, arg, backtrace);
             RaiseAsyncException(self, e);
-#else
-            throw new NotImplementedError("Thread#raise not supported on this platform");
 #endif
         }
 
@@ -710,7 +710,7 @@ namespace IronRuby.Builtins {
                     // we will get that here instead
                     Utils.Log(String.Format("Thread {0} exited.", info.Thread.ManagedThreadId), "THREAD");
                     info.Result = false;
-#if FEATURE_EXCEPTION_STATE
+#if !SILVERLIGHT
                     Thread.ResetAbort();
 #endif
                 } else {
@@ -779,4 +779,3 @@ namespace IronRuby.Builtins {
         }
     }
 }
-#endif

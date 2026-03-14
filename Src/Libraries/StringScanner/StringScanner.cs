@@ -20,6 +20,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using IronRuby.Builtins;
 using IronRuby.Runtime;
+using System.Security.Permissions;
 using System.Runtime.Serialization;
 
 namespace IronRuby.StandardLibrary.StringScanner {
@@ -40,7 +41,7 @@ namespace IronRuby.StandardLibrary.StringScanner {
             _scanString = MutableString.FrozenEmpty;
         }
 
-#if FEATURE_SERIALIZATION
+#if !SILVERLIGHT
         public StringScanner(SerializationInfo/*!*/ info, StreamingContext context) 
             : base(info, context) {
             // TODO: deserialize

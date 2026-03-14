@@ -24,7 +24,9 @@ using IronRuby.Runtime;
 [assembly: AssemblyTitle("RubyConsole")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("Microsoft")]
 [assembly: AssemblyProduct("RubyConsole")]
+[assembly: AssemblyCopyright("© Microsoft Corporation.  All rights reserved.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -35,3 +37,13 @@ using IronRuby.Runtime;
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("4fcc9697-d2dd-48a1-be74-41db600df98d")]
+
+// Version information for an assembly consists of the following four values:
+//
+//      Major Version
+//      Minor Version 
+//      Build Number
+//      Revision
+//
+[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
+[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]

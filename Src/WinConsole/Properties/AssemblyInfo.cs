@@ -24,7 +24,9 @@ using IronRuby.Runtime;
 [assembly: AssemblyTitle("RubyConsole")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("Microsoft")]
 [assembly: AssemblyProduct("RubyConsole")]
+[assembly: AssemblyCopyright("© Microsoft Corporation.  All rights reserved.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -43,5 +45,5 @@ using IronRuby.Runtime;
 //      Build Number
 //      Revision
 //
-//[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
-//[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]
+[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
+[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]

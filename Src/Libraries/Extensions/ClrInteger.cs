@@ -307,7 +307,6 @@ namespace IronRuby.Builtins {
             return Narrow((long)self * other);
         }
 
-        /// <summary>
         /// Returns self multiplied by other, where other is Fixnum or Bignum.
         /// </summary>
         /// <returns>

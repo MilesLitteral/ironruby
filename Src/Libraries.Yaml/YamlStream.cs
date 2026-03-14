@@ -14,10 +14,10 @@
  * ***************************************************************************/
 
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 using IronRuby.Builtins;
 using IronRuby.Runtime;
-using Microsoft.Scripting.Utils;
+using System.Security.Permissions;
+using System.Runtime.Serialization;
 
 namespace IronRuby.StandardLibrary.Yaml {
 
@@ -41,7 +41,7 @@ namespace IronRuby.StandardLibrary.Yaml {
                 _documents = new RubyArray();
             }
 
-#if FEATURE_SERIALIZATION
+#if !SILVERLIGHT
             protected YamlStream(SerializationInfo/*!*/ info, StreamingContext context) 
                 : base(info, context) {
                 // TODO: deserialize

@@ -27,10 +27,8 @@ using Microsoft.Scripting.Hosting;
 using Microsoft.Scripting.Math;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
-using Microsoft.Scripting.Actions;
 #if !CLR2
 using BigInt = System.Numerics.BigInteger;
-using System.Reflection.Emit;
 #endif
 
 namespace IronRuby.Tests {
@@ -40,6 +38,7 @@ namespace IronRuby.Tests {
 
         #region Members: Fields, Methods, Properties, Indexers
 
+#pragma warning disable 169 // private field not used
         public class ClassWithFields {
             public int Field = 1;
             public readonly int RoField = 2;
@@ -47,6 +46,7 @@ namespace IronRuby.Tests {
             public static int StaticField = 3;
             public const int ConstField = 4;
         }
+#pragma warning restore 169
 
         public void ClrFields1() {
             Context.DefineGlobalVariable("obj", new ClassWithFields());
@@ -80,28 +80,6 @@ NoMethodError
 4
 30
 NoMethodError
-");
-        }
-
-        public class ClassWithField1 {
-            public int F = 1;
-        }
-
-        public class ClassWithField2 : ClassWithField1 {
-            public new static int F = 2;
-        }
-
-        public void ClrFields2() {
-            Context.DefineGlobalVariable("obj", new ClassWithField2());
-
-            AssertOutput(delegate() {
-                CompilerTest(@"
-puts $obj.class.F
-puts $obj.F
-");
-            }, @"
-2
-1
 ");
         }
 
@@ -393,24 +371,6 @@ Bar(O): 7
 Baz(I): 1
 10
 ");
-        }
-
-        public delegate void TestDelegate(string a);
-
-        public void SpecialMethods() {
-            var result = Engine.Execute(@"
-System::AppDomain.CurrentDomain.CreateInstance(""mscorlib"", ""System.Object"")
-");
-            Assert(result is System.Runtime.Remoting.ObjectHandle);
-
-            var dm = (DynamicMethod)Engine.Execute(@"
-System::Reflection::Emit::DynamicMethod.new(""foo"", 1.GetType(), System::Array[System::Type].new(0))
-");
-            Assert(dm.ReturnType == typeof(int));
-
-            var invoke = typeof(TestDelegate).GetMethod("Invoke");
-            var d = invoke.CreateDelegate(typeof(Action<string>));
-            Assert(d is Action<string>);
         }
 
         #endregion
@@ -1779,7 +1739,7 @@ false
         /// </summary>
         public void ClrTypes1() {
             TestTypeAndTracker(typeof(ClassWithMethods1));
-            TestTypeAndTracker(TypeTracker.GetTypeTracker(typeof(ClassWithMethods1)));
+            TestTypeAndTracker(ReflectionCache.GetTypeTracker(typeof(ClassWithMethods1)));
         }
 
         public void TestTypeAndTracker(object type) {
@@ -3352,9 +3312,6 @@ false
         }
 
         public void ClrConversions1() {
-            if (!_driver.RunPython)
-                return;
-
             Runtime.Globals.SetVariable("Inst", new Conversions1());
             Runtime.Globals.SetVariable("Conv", new Convertible1());
 

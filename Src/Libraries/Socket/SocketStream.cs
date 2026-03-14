@@ -12,7 +12,8 @@
  *
  *
  * ***************************************************************************/
-#if FEATURE_SYNC_SOCKETS
+
+#if !SILVERLIGHT
 
 using System;
 using System.Collections.Generic;

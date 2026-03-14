@@ -513,7 +513,7 @@ namespace IronRuby.Builtins {
             input.Position = position;
             ReadUU(input, output);
             position = (int)input.Position;
-            output.Dispose();
+            output.Close();
             return output.String;
         }
 

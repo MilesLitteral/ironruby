@@ -278,11 +278,11 @@ namespace IronRuby.Builtins {
         private Dictionary<string, object> _classVariables;
 
         //
+        // The entire list of modules prepended to this one. Newly-added mixins are at the front of the array.
         // The entire list of modules included in this one. Newly-added mixins are at the front of the array.
-        // When adding a module that itself contains other modules, Ruby tries to maintain the ordering of the
-        // contained modules so that method resolution is reasonably consistent.
         //
-        // MRO walk: this, _mixins[0], _mixins[1], ..., _mixins[n-1], super, ...
+        // MRO walk: _prependedMixins[0..], this, _mixins[0..], super, ...
+        private RubyModule[]/*!*/ _prependedMixins;
         private RubyModule[]/*!*/ _mixins;
 
         // A list of extension methods included into this type or null if none were included.
@@ -336,6 +336,10 @@ namespace IronRuby.Builtins {
             get { return _mixins; }
         }
 
+        internal RubyModule[]/*!*/ PrependedMixins {
+            get { return _prependedMixins; }
+        }
+
         public string Name {
             get { return _name; }
             internal set { _name = value; }
@@ -385,6 +389,7 @@ namespace IronRuby.Builtins {
             _constantsInitializer = constantsInitializer;
             _namespaceTracker = namespaceTracker;
             _typeTracker = typeTracker;
+            _prependedMixins = EmptyArray;
             _mixins = expandedMixins ?? EmptyArray;
             _restrictions = restrictions;
             _weakSelf = new WeakReference(this);
@@ -481,10 +486,12 @@ namespace IronRuby.Builtins {
 
         private List<RubyModule>/*!*/ GetUninitializedAncestors(bool methods) {
             var result = new List<RubyModule>();
+            result.AddRange(_prependedMixins);
             result.Add(this);
             result.AddRange(_mixins);
             var super = GetSuperClass();
             while (super != null && (methods ? super.MethodInitializationNeeded : super.ConstantInitializationNeeded)) {
+                result.AddRange(super._prependedMixins);
                 result.Add(super);
                 result.AddRange(super._mixins);
                 super = super.SuperClass;
@@ -580,6 +587,7 @@ namespace IronRuby.Builtins {
             }
 
             _classVariables = (module._classVariables != null) ? new Dictionary<string, object>(module._classVariables) : null;
+            _prependedMixins = ArrayUtils.Copy(module._prependedMixins);
             _mixins = ArrayUtils.Copy(module._mixins);
 
             // dependentModules - skip
@@ -871,6 +879,11 @@ namespace IronRuby.Builtins {
 
         internal bool ForEachDeclaredAncestor(Func<RubyModule/*!*/, bool>/*!*/ action) {
             Context.RequiresClassHierarchyLock();
+
+            // prepended mixins:
+            foreach (RubyModule m in _prependedMixins) {
+                if (action(m)) return true;
+            }
 
             // this module:
             if (action(this)) return true;
@@ -1746,15 +1759,15 @@ namespace IronRuby.Builtins {
         }
 
         /// <summary>
-        /// inherited == false, attributes &amp; attr == Instance:
+        /// inherited == false, attributes & attr == Instance:
         ///   - get methods in the "self" module
         ///   - also include methods on singleton ancestor classes until a non-singleton class is reached
-        /// inherited == false, attributes &amp; attr == Singleton:
+        /// inherited == false, attributes & attr == Singleton:
         ///   - get methods only in the "self" module if it's a singleton class
         ///   - do not visit mixins nor super classes 
-        /// inherited == true, attributes &amp; attr == Singleton:
+        /// inherited == true, attributes & attr == Singleton:
         ///   - walk all ancestors until a non-singleton class is reached (do not include non-singleton's methods)
-        /// inherited == true, attributes &amp; attr == None:
+        /// inherited == true, attributes & attr == None:
         ///   - walk all ancestors until an Object is reached
         /// 
         /// Methods are filtered by visibility specified in attributes (mutliple visibilities could be specified).
@@ -1918,6 +1931,12 @@ namespace IronRuby.Builtins {
             }
         }
 
+        public RubyModule[]/*!*/ GetPrependedMixins() {
+            using (Context.ClassHierarchyLocker()) {
+                return ArrayUtils.Copy(_prependedMixins);
+            }
+        }
+
         // thread-safe:
         public void IncludeModules(params RubyModule[]/*!*/ modules) {
             using (Context.ClassHierarchyLocker()) {
@@ -1931,11 +1950,16 @@ namespace IronRuby.Builtins {
 
             RubyUtils.RequireMixins(this, modules);
 
-            RubyModule[] expanded = ExpandMixinsNoLock(GetSuperClass(), _mixins, modules);
+            RubyModule[] filtered = FilterOutPrependedMixins(modules);
+            if (filtered.Length == 0) {
+                return;
+            }
+
+            RubyModule[] expanded = ExpandMixinsNoLock(GetSuperClass(), _mixins, filtered);
 
             foreach (RubyModule module in expanded) {
                 if (module.IsInterface && !CanIncludeClrInterface) {
-                    if (Array.IndexOf(_mixins, module) == -1) {
+                    if (Array.IndexOf(_mixins, module) == -1 && Array.IndexOf(_prependedMixins, module) == -1) {
                         throw new InvalidOperationException(String.Format(
                             "Interface `{0}' cannot be included in class `{1}' because its underlying type has already been created",
                             module.Name, Name
@@ -1945,6 +1969,41 @@ namespace IronRuby.Builtins {
             }
 
             MixinsUpdated(_mixins, _mixins = expanded);
+            _context.ConstantAccessVersion++;
+        }
+
+        // thread-safe:
+        public void PrependModules(params RubyModule[]/*!*/ modules) {
+            using (Context.ClassHierarchyLocker()) {
+                PrependModulesNoLock(modules);
+            }
+        }
+
+        internal void PrependModulesNoLock(RubyModule[]/*!*/ modules) {
+            Context.RequiresClassHierarchyLock();
+            Mutate();
+
+            RubyUtils.RequireMixins(this, modules);
+
+            RubyModule[] expanded = ExpandMixinsNoLock(GetSuperClass(), _prependedMixins, modules);
+
+            foreach (RubyModule module in expanded) {
+                if (module.IsInterface && !CanIncludeClrInterface) {
+                    if (Array.IndexOf(_prependedMixins, module) == -1) {
+                        throw new InvalidOperationException(String.Format(
+                            "Interface `{0}' cannot be prepended to class `{1}' because its underlying type has already been created",
+                            module.Name, Name
+                        ));
+                    }
+                }
+            }
+
+            MixinsUpdated(_prependedMixins, _prependedMixins = expanded);
+
+            if (_mixins.Length > 0 && _prependedMixins.Length > 0) {
+                _mixins = RemovePrependedMixinsFromIncluded(_mixins, _prependedMixins);
+            }
+
             _context.ConstantAccessVersion++;
         }
 
@@ -1978,7 +2037,7 @@ namespace IronRuby.Builtins {
         }
 
         // Requires hierarchy lock
-        private static int ExpandMixinsNoLock(RubyClass superClass, List<RubyModule/*!*/>/*!*/ existing, int index, IList<RubyModule/*!*/>/*!*/ added, 
+        private static int ExpandMixinsNoLock(RubyClass superClass, List<RubyModule/*!*/>/*!*/ existing, int index, IList<RubyModule/*!*/>/*!*/ added,
             bool recursive) {
 
             foreach (RubyModule module in added) {
@@ -1989,22 +2048,27 @@ namespace IronRuby.Builtins {
                     // Module is already present in _mixins
                     // Update the insertion point so that we retain ordering of dependencies
                     // If we're still in the initial level of recursion, repeat for module's mixins
-                    index = newIndex + 1;
                     if (recursive) {
-                        index = ExpandMixinsNoLock(superClass, existing, index, module._mixins, false);
+                        index = ExpandMixinsNoLock(superClass, existing, newIndex, module._prependedMixins, false);
+                        newIndex = existing.IndexOf(module);
+                        index = ExpandMixinsNoLock(superClass, existing, newIndex + 1, module._mixins, false);
+                    } else {
+                        index = newIndex + 1;
                     }
                 } else {
                     // Module is not yet present in _mixins
                     // Recursively insert module dependencies at the insertion point, then insert module itself
-                    newIndex = ExpandMixinsNoLock(superClass, existing, index, module._mixins, false);
+                    int beforeIndex = ExpandMixinsNoLock(superClass, existing, index, module._prependedMixins, false);
                     
                     // insert module only if it is not an ancestor of the superclass:
                     if (superClass == null || !superClass.HasAncestorNoLock(module)) {
-                        existing.Insert(index, module);
-                        index = newIndex + 1;
+                        existing.Insert(beforeIndex, module);
+                        beforeIndex++;
                     } else {
-                        index = newIndex;
+                        // no insert
                     }
+
+                    index = ExpandMixinsNoLock(superClass, existing, beforeIndex, module._mixins, false);
                 }
             }
             return index;
@@ -2024,6 +2088,11 @@ namespace IronRuby.Builtins {
         internal List<Type> GetImplementedInterfaces() {
             List<Type> interfaces = new List<Type>();
             using (Context.ClassHierarchyLocker()) {
+                foreach (RubyModule m in _prependedMixins) {
+                    if (m.IsInterface && !m.TypeTracker.Type.IsGenericTypeDefinition && !interfaces.Contains(m.TypeTracker.Type)) {
+                        interfaces.Add(m.TypeTracker.Type);
+                    }
+                }
                 foreach (RubyModule m in _mixins) {
                     if (m.IsInterface && !m.TypeTracker.Type.IsGenericTypeDefinition && !interfaces.Contains(m.TypeTracker.Type)) {
                         interfaces.Add(m.TypeTracker.Type);
@@ -2031,6 +2100,30 @@ namespace IronRuby.Builtins {
                 }
             }
             return interfaces;
+        }
+
+        private RubyModule[]/*!*/ FilterOutPrependedMixins(RubyModule[]/*!*/ modules) {
+            if (_prependedMixins.Length == 0) {
+                return modules;
+            }
+
+            var filtered = new List<RubyModule>(modules.Length);
+            foreach (var module in modules) {
+                if (Array.IndexOf(_prependedMixins, module) == -1) {
+                    filtered.Add(module);
+                }
+            }
+            return filtered.ToArray();
+        }
+
+        private static RubyModule[]/*!*/ RemovePrependedMixinsFromIncluded(RubyModule[]/*!*/ included, RubyModule[]/*!*/ prepended) {
+            var filtered = new List<RubyModule>(included.Length);
+            foreach (var module in included) {
+                if (Array.IndexOf(prepended, module) == -1) {
+                    filtered.Add(module);
+                }
+            }
+            return filtered.ToArray();
         }
 
         private void IncludeTraitNoLock(ref Action<RubyModule> initializer, MemberTableState tableState, Action<RubyModule>/*!*/ trait) {

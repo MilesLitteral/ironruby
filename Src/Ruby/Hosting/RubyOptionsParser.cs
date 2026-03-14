@@ -258,6 +258,9 @@ namespace IronRuby.Hosting {
                     break;
 
                 case "-X":
+                    if (TryHandleRubyVersionOption(optionValue)) {
+                        break;
+                    }
                     switch (optionValue) {
                         case "AutoIndent":
                         case "TabCompletion":
@@ -359,6 +362,93 @@ namespace IronRuby.Hosting {
             }
         }
 
+        private bool TryHandleRubyVersionOption(string optionValue) {
+            if (String.IsNullOrEmpty(optionValue)) {
+                return false;
+            }
+
+            string name;
+            string value;
+            int equals = optionValue.IndexOf('=');
+            if (equals >= 0) {
+                name = optionValue.Substring(0, equals);
+                value = optionValue.Substring(equals + 1);
+            } else {
+                name = optionValue;
+                value = null;
+            }
+
+            switch (name) {
+                case "RubyVersion":
+                    if (!String.IsNullOrEmpty(value)) {
+                        LanguageSetup.Options["RubyVersion"] = value;
+                    }
+                    return true;
+
+                case "RubyReleaseDate":
+                    if (!String.IsNullOrEmpty(value)) {
+                        LanguageSetup.Options["RubyReleaseDate"] = value;
+                    }
+                    return true;
+
+                case "RubyPatchLevel":
+                    int patchLevel;
+                    if (Int32.TryParse(value, out patchLevel)) {
+                        LanguageSetup.Options["RubyPatchLevel"] = patchLevel;
+                        return true;
+                    }
+                    throw new InvalidOptionException(String.Format("Option `{0}' requires an integer value", optionValue));
+
+                case "StandardLibraryVersion":
+                    if (!String.IsNullOrEmpty(value)) {
+                        LanguageSetup.Options["StandardLibraryVersion"] = value;
+                    }
+                    return true;
+
+                case "RubyCompatibility":
+                    RubyCompatibility compatibility;
+                    if (TryParseRubyCompatibility(value, out compatibility)) {
+                        LanguageSetup.Options["RubyCompatibility"] = compatibility;
+                        return true;
+                    }
+                    throw new InvalidOptionException(String.Format("Option `{0}' requires a Ruby version like 3.2 or 4.0", optionValue));
+            }
+
+            return false;
+        }
+
+        private static bool TryParseRubyCompatibility(string value, out RubyCompatibility compatibility) {
+            compatibility = RubyCompatibility.Default;
+            if (String.IsNullOrEmpty(value)) {
+                return false;
+            }
+
+            RubyCompatibility parsed;
+            if (Enum.TryParse(value, true, out parsed)) {
+                compatibility = parsed;
+                return true;
+            }
+
+            int numeric;
+            if (Int32.TryParse(value, out numeric)) {
+                compatibility = (RubyCompatibility)numeric;
+                return true;
+            }
+
+            string[] parts = value.Split('.');
+            int major;
+            int minor = 0;
+            if (parts.Length >= 1 && Int32.TryParse(parts[0], out major)) {
+                if (parts.Length >= 2) {
+                    Int32.TryParse(parts[1], out minor);
+                }
+                compatibility = (RubyCompatibility)(major * 100 + minor * 10);
+                return true;
+            }
+
+            return false;
+        }
+
         public override void GetHelp(out string commandLine, out string[,] options, out string[,] environmentVariables, out string comments) {
             commandLine = "[options] [file] [arguments]";
             environmentVariables = null;
@@ -423,6 +513,11 @@ namespace IronRuby.Hosting {
                 { "-X:TrackPerformance",         "track performance sensitive areas [debug only]" },
                 { "-X:PerfStats",                "print performance stats when the process exists [debug only]" },
 #endif
+                { "-X:RubyVersion=<x.y[.z]>",    "override RUBY_VERSION (default " + RubyOptions.DefaultRubyVersion + ")" },
+                { "-X:RubyReleaseDate=<date>",   "override RUBY_RELEASE_DATE (default " + RubyOptions.DefaultRubyReleaseDate + ")" },
+                { "-X:RubyPatchLevel=<int>",     "override RUBY_PATCHLEVEL (default " + RubyOptions.DefaultRubyPatchLevel + ")" },
+                { "-X:StandardLibraryVersion=<x.y[.z]>", "override stdlib version path (default " + RubyOptions.DefaultStandardLibraryVersion + ")" },
+                { "-X:RubyCompatibility=<x.y>",  "override compatibility mode (default " + ((int)RubyOptions.DefaultRubyCompatibility / 10.0).ToString("0.0") + ")" },
             };
         }
     }

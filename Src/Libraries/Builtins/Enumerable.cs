@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using IronRuby;
 using IronRuby.Runtime;
 using Microsoft.Scripting.Generation;
 using Microsoft.Scripting.Runtime;
@@ -140,6 +141,53 @@ namespace IronRuby.Builtins {
 
         #endregion
 
+        #region filter_map (Ruby 3.x)
+
+        [RubyMethod("filter_map", Compatibility = RubyCompatibility.Ruby30)]
+        public static Enumerator/*!*/ GetFilterMapEnumerator(CallSiteStorage<EachSite>/*!*/ each, BlockParam predicate, object self) {
+            return new Enumerator((_, block) => FilterMap(each, block, self));
+        }
+
+        [RubyMethod("filter_map", Compatibility = RubyCompatibility.Ruby30)]
+        public static object FilterMap(CallSiteStorage<EachSite>/*!*/ each, [NotNull]BlockParam/*!*/ predicate, object self) {
+            RubyArray resultArray = new RubyArray();
+            object result = resultArray;
+
+            if (predicate.Proc.Dispatcher.ParameterCount <= 1 && !predicate.Proc.Dispatcher.HasUnsplatParameter && !predicate.Proc.Dispatcher.HasProcParameter) {
+                Each(each, self, Proc.Create(each.Context, delegate(BlockParam/*!*/ selfBlock, object _, object item) {
+                    object blockResult;
+                    if (predicate.Yield(item, out blockResult)) {
+                        result = blockResult;
+                        return selfBlock.PropagateFlow(predicate, blockResult);
+                    }
+
+                    if (Protocols.IsTrue(blockResult)) {
+                        resultArray.Add(blockResult);
+                    }
+                    return null;
+                }));
+            } else {
+                Each(each, self, Proc.Create(each.Context, 0, delegate(BlockParam/*!*/ selfBlock, object _, object[] __, RubyArray args) {
+                    Debug.Assert(__.Length == 0);
+
+                    object blockResult;
+                    if (predicate.YieldSplat(args, out blockResult)) {
+                        result = blockResult;
+                        return selfBlock.PropagateFlow(predicate, blockResult);
+                    }
+
+                    if (Protocols.IsTrue(blockResult)) {
+                        resultArray.Add(blockResult);
+                    }
+                    return null;
+                }));
+            }
+
+            return result;
+        }
+
+        #endregion
+
         #region detect, find, find_index
 
         [RubyMethod("detect")]
@@ -225,6 +273,27 @@ namespace IronRuby.Builtins {
                 }
 
                 index++;
+                return null;
+            }));
+
+            return result;
+        }
+
+        #endregion
+
+        #region tally (Ruby 3.x)
+
+        [RubyMethod("tally", Compatibility = RubyCompatibility.Ruby30)]
+        public static Hash/*!*/ Tally(CallSiteStorage<EachSite>/*!*/ each, object self) {
+            Hash result = new Hash(each.Context);
+
+            Each(each, self, Proc.Create(each.Context, delegate(BlockParam/*!*/ selfBlock, object _, object item) {
+                object current;
+                int count = 0;
+                if (result.TryGetValue(item, out current)) {
+                    count = (int)current;
+                }
+                result[item] = ScriptingRuntimeHelpers.Int32ToObject(count + 1);
                 return null;
             }));
 

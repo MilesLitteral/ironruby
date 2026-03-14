@@ -44,14 +44,14 @@ namespace IronRuby.Tests {
             b = Loader.TryParseAssemblyName(str, out type, out assembly);
             Assert(b == false);
             
-            str = "IronRuby.Runtime.RubyContext, IronRuby, Version=" + IronRuby.CurrentVersion.DisplayVersion + ", Culture=neutral, PublicKeyToken=31bf3856ad364e35";
+            str = "IronRuby.Runtime.RubyContext, IronRuby, Version=" + RubyContext.IronRubyVersionString + ", Culture=neutral, PublicKeyToken=31bf3856ad364e35";
             b = Loader.TryParseAssemblyName(str, out type, out assembly);
             Assert(b == true &&
-                assembly == "IronRuby, Version=" + IronRuby.CurrentVersion.DisplayVersion + ", Culture=neutral, PublicKeyToken=31bf3856ad364e35" &&
+                assembly == "IronRuby, Version=" + RubyContext.IronRubyVersionString + ", Culture=neutral, PublicKeyToken=31bf3856ad364e35" &&
                 type == "IronRuby.Runtime.RubyContext"
             );
 
-            str = "IronRuby, Version=" + IronRuby.CurrentVersion.DisplayVersion + ", Culture=neutral, PublicKeyToken=31bf3856ad364e35";
+            str = "IronRuby, Version=" + RubyContext.IronRubyVersionString + ", Culture=neutral, PublicKeyToken=31bf3856ad364e35";
             b = Loader.TryParseAssemblyName(str, out type, out assembly);
             Assert(b == true && assembly == str && type == null);
 
@@ -59,7 +59,7 @@ namespace IronRuby.Tests {
             b = Loader.TryParseAssemblyName(str, out type, out assembly);
             Assert(b == true && assembly == str && type == null);
 
-            str = "IronRuby, Version=" + IronRuby.CurrentVersion.DisplayVersion;
+            str = "IronRuby, Version=" + RubyContext.IronRubyVersionString;
             b = Loader.TryParseAssemblyName(str, out type, out assembly);
             Assert(b == true && assembly == str && type == null);
         }

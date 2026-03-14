@@ -29,6 +29,7 @@ namespace IronRuby.Runtime {
         private readonly RubyEncoding/*!*/ _localeEncoding;
         private readonly RubyEncoding _defaultEncoding;
         private readonly string _standardLibraryPath;
+        private readonly string _standardLibraryVersion;
         private readonly string _applicationBase;
         private readonly ReadOnlyCollection<string> _requirePaths;
         private readonly string _mainFile;
@@ -40,6 +41,10 @@ namespace IronRuby.Runtime {
         private readonly bool _profile;
         private readonly bool _hasSearchPaths;
         private readonly bool _noAssemblyResolveHook;
+        private readonly string _rubyVersion;
+        private readonly string _rubyReleaseDate;
+        private readonly int _rubyPatchLevel;
+        private readonly RubyCompatibility _compatibility;
 
 #if DEBUG
         public static bool UseThreadAbortForSyncRaise;
@@ -91,6 +96,10 @@ namespace IronRuby.Runtime {
             get { return _standardLibraryPath; }
         }
 
+        public string StandardLibraryVersion {
+            get { return _standardLibraryVersion; }
+        }
+
         public string ApplicationBase {
             get { return _applicationBase; }
         }
@@ -104,8 +113,36 @@ namespace IronRuby.Runtime {
         }
 
         public RubyCompatibility Compatibility {
-            get { return RubyCompatibility.Default; }
+            get { return _compatibility; }
         }
+
+        public string RubyVersion {
+            get { return _rubyVersion; }
+        }
+
+        public string RubyReleaseDate {
+            get { return _rubyReleaseDate; }
+        }
+
+        public int RubyPatchLevel {
+            get { return _rubyPatchLevel; }
+        }
+
+#if RUBY40_STDLIB
+        public const string DefaultRubyVersion = "4.0.1";
+        public const string DefaultRubyReleaseDate = "0000-00-00";
+        public const int DefaultRubyPatchLevel = 0;
+        public const string DefaultStandardLibraryVersion = "4.0.0";
+        public const RubyCompatibility DefaultRubyCompatibility = RubyCompatibility.Ruby40;
+        private const RubyCompatibility DefaultCompatibility = DefaultRubyCompatibility;
+#else
+        public const string DefaultRubyVersion = "3.4.9";
+        public const string DefaultRubyReleaseDate = "0000-00-00";
+        public const int DefaultRubyPatchLevel = 82;
+        public const string DefaultStandardLibraryVersion = "3.4.0";
+        public const RubyCompatibility DefaultRubyCompatibility = RubyCompatibility.Default;
+        private const RubyCompatibility DefaultCompatibility = DefaultRubyCompatibility;
+#endif
 
         /// <summary>
         /// The initial value of $DEBUG variable.
@@ -132,6 +169,26 @@ namespace IronRuby.Runtime {
             _hasSearchPaths = GetOption<object>(options, "SearchPaths", null) != null;
             _standardLibraryPath = GetOption(options, "StandardLibrary", (string)null);
             _applicationBase = GetOption(options, "ApplicationBase", (string)null);
+            _standardLibraryVersion = GetOption(options, "StandardLibraryVersion", (string)null) ?? DefaultStandardLibraryVersion;
+            _rubyVersion = NormalizeRubyVersion(GetOption(options, "RubyVersion", DefaultRubyVersion));
+            _rubyReleaseDate = GetOption(options, "RubyReleaseDate", DefaultRubyReleaseDate);
+            _rubyPatchLevel = GetOption(options, "RubyPatchLevel", DefaultRubyPatchLevel);
+            _compatibility = GetOption(options, "RubyCompatibility", DefaultCompatibility);
+        }
+
+        private static string NormalizeRubyVersion(string version) {
+            if (String.IsNullOrEmpty(version)) {
+                return DefaultRubyVersion;
+            }
+
+            string[] parts = version.Split('.');
+            if (parts.Length == 1) {
+                return version + ".0.0";
+            }
+            if (parts.Length == 2) {
+                return version + ".0";
+            }
+            return version;
         }
     }
 }

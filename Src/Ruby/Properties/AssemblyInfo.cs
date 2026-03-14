@@ -34,12 +34,9 @@ using IronRuby.Runtime;
 [assembly: CLSCompliant(true)]
 [assembly: Guid("ca75230d-3011-485d-b1db-dfe924b6c434")]
 
-//#if !SILVERLIGHT
-//[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
-//[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]
-//#endif
-
-#if !SILVERLIGHT && !WP75
+#if !SILVERLIGHT
+[assembly: AssemblyVersion(RubyContext.IronRubyVersionString)]
+[assembly: AssemblyFileVersion(RubyContext.IronRubyVersionString)]
 [assembly: AllowPartiallyTrustedCallers]
 #endif
 
@@ -52,6 +49,6 @@ using IronRuby.Runtime;
 
 
 [assembly: SecurityTransparent]
-#if !CLR2 && !SILVERLIGHT && !WIN8 && !ANDROID && !WP75
+#if !CLR2 && !SILVERLIGHT
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 #endif
